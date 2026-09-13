@@ -1,0 +1,125 @@
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  
+  /* McMaster-Carr Industrial Palette - Crisp & Functional */
+  --mcmaster-green: #004d2c;
+  --mcmaster-green-hover: #003820;
+  --mcmaster-yellow: #ffde59;
+  
+  --bg: #f2f3f0;
+  --card-bg: #ffffff;
+  --card-header-bg: #f7f8f6;
+  --header-bg: #004d2c;
+  --header-text: #ffffff;
+  
+  --border: #d0d5dd;
+  --border-strong: #98a2b3;
+  --border-subtle: #eaecf0;
+  
+  --text: #1d2939;
+  --text-h: #101828;
+  --text-muted: #667085;
+
+  --danger: #d92d20;
+  --danger-bg: #fef3f2;
+
+  --success: #039855;
+  --success-bg: #edfcf2;
+  
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+[data-theme="dark"] {
+  --mcmaster-green: #059669;
+  --mcmaster-green-hover: #10b981;
+  --mcmaster-yellow: #fcd34d;
+
+  --bg: #121417;
+  --card-bg: #1c2024;
+  --card-header-bg: #23282e;
+  --header-bg: #18231c;
+  --header-text: #ffffff;
+
+  --border: #344054;
+  --border-strong: #475467;
+  --border-subtle: #262c33;
+
+  --text: #d0d5dd;
+  --text-h: #f9fafb;
+  --text-muted: #98a2b3;
+
+  --danger: #f04438;
+  --danger-bg: rgba(240, 68, 56, 0.1);
+
+  --success: #32d583;
+  --success-bg: rgba(50, 213, 131, 0.1);
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --mcmaster-green: #059669;
+    --mcmaster-green-hover: #10b981;
+    --mcmaster-yellow: #fcd34d;
+
+    --bg: #121417;
+    --card-bg: #1c2024;
+    --card-header-bg: #23282e;
+    --header-bg: #18231c;
+    --header-text: #ffffff;
+
+    --border: #344054;
+    --border-strong: #475467;
+    --border-subtle: #262c33;
+
+    --text: #d0d5dd;
+    --text-h: #f9fafb;
+    --text-muted: #98a2b3;
+
+    --danger: #f04438;
+    --danger-bg: rgba(240, 68, 56, 0.1);
+
+    --success: #32d583;
+    --success-bg: rgba(50, 213, 131, 0.1);
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+button, input {
+  font-family: inherit;
+  font-size: inherit;
+}
+
