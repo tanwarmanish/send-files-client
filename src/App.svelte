@@ -2,6 +2,7 @@
   import Header from './lib/Header.svelte';
   import SendCard from './lib/SendCard.svelte';
   import ReceiveCard from './lib/ReceiveCard.svelte';
+  import Notepad from './lib/Notepad.svelte';
   import { socketService } from './lib/socketService';
   import { webrtcService } from './lib/webrtcService';
   import type { RoomCreatedData, ReceivedFile, TransferProgress } from './lib/types';
@@ -24,6 +25,25 @@
   let isSendCompleted = $state(false);
   let isReceiveCompleted = $state(false);
 
+  // Shared notepad: usable whenever the P2P data channel is open, in either mode.
+  let p2pReady = $state(false);
+  let notepadOnly = $state(false);
+  let noteRemote = $state({ text: '', seq: 0 });
+
+  function handleNoteUpdate(text: string) {
+    noteRemote = { text, seq: noteRemote.seq + 1 };
+  }
+
+  function handleNoteChange(text: string) {
+    webrtcService.sendNote(text);
+  }
+
+  /** Start a session with no files: just a room code and the shared notepad. */
+  function handleStartNotepad() {
+    notepadOnly = true;
+    handleSendFiles([]);
+  }
+
   function handleSendFiles(files: File[]) {
     console.log('[App] Initiating send with files:', files);
     selectedFiles = files;
@@ -31,6 +51,8 @@
     activeSendKey = '';
     sendProgress = null;
     isSendCompleted = false;
+    p2pReady = false;
+    noteRemote = { text: '', seq: 0 };
     sendStatus = 'Generating 6-digit key...';
 
     // 1. Connect WebSocket as sender (URL?t=1)
@@ -51,12 +73,21 @@
           onConnectionStateChange: (state) => {
             console.log('[App] WebRTC Sender state:', state);
             if (state === 'connected') {
-              sendStatus = 'P2P Connected! Sending files...';
+              sendStatus = selectedFiles.length > 0 ? 'P2P Connected! Sending files...' : 'Connected! Use the notepad below.';
             } else if (state === 'disconnected' || state === 'failed') {
               sendStatus = 'P2P connection lost.';
             }
           },
+          onDataChannelClose: () => {
+            p2pReady = false;
+          },
+          onNoteUpdate: handleNoteUpdate,
           onDataChannelOpen: async () => {
+            p2pReady = true;
+            if (selectedFiles.length === 0) {
+              sendStatus = 'Connected! Use the notepad below.';
+              return;
+            }
             console.log('[App] Data Channel Open! Streaming files in chunks...');
             sendStatus = 'Transferring files...';
             try {
@@ -98,7 +129,9 @@
       },
       onClose: () => {
         console.log('[App] WebSocket closed');
-        if (mode !== 'idle' && !isSendCompleted) {
+        // The signaling socket is only needed to set up the P2P link. Once it is up, a closed
+        // socket (e.g. the server recycling the room) must not end the session or the notepad.
+        if (mode !== 'idle' && !isSendCompleted && !p2pReady) {
           handleCloseConnection();
         }
       },
@@ -116,6 +149,8 @@
     receiveProgress = null;
     receivedFiles = [];
     isReceiveCompleted = false;
+    p2pReady = false;
+    noteRemote = { text: '', seq: 0 };
     receiveStatus = 'Connecting to room...';
 
     // 1. Connect WebSocket as receiver (URL?t=2&r=...)
@@ -129,14 +164,19 @@
           onConnectionStateChange: (state) => {
             console.log('[App] WebRTC Receiver state:', state);
             if (state === 'connected') {
-              receiveStatus = 'P2P Connected! Waiting for files...';
+              receiveStatus = 'P2P Connected! Waiting for files or notes...';
             } else if (state === 'disconnected' || state === 'failed') {
               receiveStatus = 'P2P connection lost.';
             }
           },
+          onDataChannelClose: () => {
+            p2pReady = false;
+          },
+          onNoteUpdate: handleNoteUpdate,
           onDataChannelOpen: () => {
             console.log('[App] Receiver Data Channel open, ready for file chunks');
-            receiveStatus = 'Receiving files...';
+            p2pReady = true;
+            receiveStatus = 'Connected! Waiting for files or notes...';
           },
           onReceiveProgress: (progress) => {
             receiveProgress = progress;
@@ -174,7 +214,7 @@
       },
       onClose: () => {
         console.log('[App] WebSocket closed');
-        if (mode !== 'idle' && !isReceiveCompleted) {
+        if (mode !== 'idle' && !isReceiveCompleted && !p2pReady) {
           handleCloseConnection();
         }
       },
@@ -198,6 +238,9 @@
     receivedFiles = [];
     isSendCompleted = false;
     isReceiveCompleted = false;
+    p2pReady = false;
+    notepadOnly = false;
+    noteRemote = { text: '', seq: 0 };
   }
 </script>
 
@@ -214,6 +257,7 @@
             transferProgress={sendProgress}
             transferStatus={sendStatus}
             isCompleted={isSendCompleted}
+            {notepadOnly}
             onSend={handleSendFiles}
             onClose={handleCloseConnection}
           />
@@ -232,6 +276,17 @@
           />
         {/if}
       </div>
+
+      {#if mode === 'idle'}
+        <div class="notepad-entry">
+          <span>Just need to share some text?</span>
+          <button type="button" class="btn-link" onclick={handleStartNotepad}>Open a shared notepad</button>
+        </div>
+      {:else if p2pReady}
+        <div class="notepad-wrap">
+          <Notepad remote={noteRemote} connected={p2pReady} onChange={handleNoteChange} />
+        </div>
+      {/if}
     </div>
   </main>
 
@@ -285,6 +340,31 @@
 
   .cards-grid.single {
     grid-template-columns: 1fr;
+  }
+
+  .notepad-wrap {
+    margin-top: 1.5rem;
+  }
+
+  .notepad-entry {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .btn-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mcmaster-green);
+    cursor: pointer;
+    text-decoration: underline;
   }
 
   @media (max-width: 768px) {

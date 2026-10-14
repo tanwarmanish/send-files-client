@@ -7,6 +7,8 @@
     transferProgress?: TransferProgress | null;
     transferStatus?: string;
     isCompleted?: boolean;
+    /** Session started without files, only to use the shared notepad. */
+    notepadOnly?: boolean;
     onSend?: (files: File[]) => void;
     onClose?: () => void;
   }
@@ -17,6 +19,7 @@
     transferProgress = null,
     transferStatus = 'Waiting for recipient...',
     isCompleted = false,
+    notepadOnly = false,
     onSend,
     onClose
   }: Props = $props();
@@ -129,7 +132,7 @@
 
 <div class="panel send-panel">
   <div class="panel-header">
-    <h2 class="panel-title">{isActive ? (isCompleted ? 'Sent' : 'Sending') : 'Send Files'}</h2>
+    <h2 class="panel-title">{isActive ? (notepadOnly ? 'Notepad' : isCompleted ? 'Sent' : 'Sending') : 'Send Files'}</h2>
     <div class="header-right">
       {#if isActive}
         <button
@@ -190,6 +193,7 @@
         </div>
       {/if}
 
+      {#if !notepadOnly}
       <div class="file-summary">
         <div class="file-summary-title">
           <span>Files ({files.length})</span>
@@ -204,6 +208,7 @@
           {/each}
         </ul>
       </div>
+      {/if}
     </div>
 
     <div class="panel-footer">
@@ -212,7 +217,7 @@
         class="btn-solid full-width"
         onclick={handleClose}
       >
-        {isCompleted ? 'Done' : 'Cancel Transfer'}
+        {notepadOnly ? 'End Session' : isCompleted ? 'Done' : 'Cancel Transfer'}
       </button>
     </div>
   {:else}

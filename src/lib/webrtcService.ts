@@ -1,6 +1,8 @@
 import { socketService } from './socketService';
+import { NoteState } from './noteState';
 import type {
   SignalingData,
+  PeerRole,
   FileMetadataMessage,
   DataChannelControlMessage,
   ReceivedFile,
@@ -27,6 +29,8 @@ export interface WebRTCCallbacks {
   onReceiveProgress?: (progress: TransferProgress) => void;
   onFileReceived?: (file: ReceivedFile) => void;
   onTransferComplete?: () => void;
+  /** The shared notepad text changed because of an update from the peer. */
+  onNoteUpdate?: (text: string) => void;
   onError?: (error: Error | string) => void;
 }
 
@@ -35,6 +39,7 @@ export class WebRTCService {
   private dataChannel: RTCDataChannel | null = null;
   private callbacks: WebRTCCallbacks = {};
   private pendingCandidates: RTCIceCandidateInit[] = [];
+  private note = new NoteState('sender');
 
   // Transfer state
   private isSending = false;
@@ -64,6 +69,7 @@ export class WebRTCService {
       this.setCallbacks(callbacks);
     }
     this.cleanup();
+    this.resetNote('sender');
 
     console.log('[WebRTC] Initializing as Sender...');
     this.pc = new RTCPeerConnection(RTC_CONFIG);
@@ -98,6 +104,7 @@ export class WebRTCService {
       this.setCallbacks(callbacks);
     }
     this.cleanup();
+    this.resetNote('receiver');
 
     console.log('[WebRTC] Initializing as Receiver, waiting for data channel and offer...');
     this.pc = new RTCPeerConnection(RTC_CONFIG);
@@ -107,6 +114,25 @@ export class WebRTCService {
       console.log('[WebRTC] Data channel received from sender:', event.channel.label);
       this.setupDataChannel(event.channel);
     };
+  }
+
+  private resetNote(role: PeerRole) {
+    this.note = new NoteState(role);
+  }
+
+  public isDataChannelOpen(): boolean {
+    return this.dataChannel?.readyState === 'open';
+  }
+
+  /**
+   * Share the notepad text with the peer. Throws if the note is too large or the
+   * channel is not open yet; the caller decides how to surface that.
+   */
+  public sendNote(text: string): void {
+    if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
+      throw new Error('Not connected yet');
+    }
+    this.sendControlMessage(this.note.edit(text));
   }
 
   /**
@@ -390,7 +416,16 @@ export class WebRTCService {
 
       case 'transfer-complete': {
         console.log('[WebRTC] All files transferred successfully!');
+        // Lets a CLI sender know it can exit; older senders just ignore this message.
+        this.sendControlMessage({ action: 'transfer-ack' });
         this.callbacks.onTransferComplete?.();
+        break;
+      }
+
+      case 'note-update': {
+        if (this.note.receive(msg)) {
+          this.callbacks.onNoteUpdate?.(this.note.text);
+        }
         break;
       }
     }
