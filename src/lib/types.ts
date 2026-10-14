@@ -60,10 +60,31 @@ export interface TransferCompleteMessage {
   action: 'transfer-complete';
 }
 
+/** Sent by the receiver after `transfer-complete` so a CLI sender knows it can exit safely. */
+export interface TransferAckMessage {
+  action: 'transfer-ack';
+}
+
+/** Which side of the room a peer is on. The room creator ("sender") is the WebRTC initiator. */
+export type PeerRole = 'sender' | 'receiver';
+
+/**
+ * Full snapshot of the shared notepad. Last write wins, ordered by `rev`;
+ * ties are broken in favour of the room creator (`role: 'sender'`).
+ */
+export interface NoteUpdateMessage {
+  action: 'note-update';
+  text: string;
+  rev: number;
+  role: PeerRole;
+}
+
 export type DataChannelControlMessage =
   | FileMetadataMessage
   | FileEndMessage
-  | TransferCompleteMessage;
+  | TransferCompleteMessage
+  | TransferAckMessage
+  | NoteUpdateMessage;
 
 export interface ReceivedFile {
   id: string;
